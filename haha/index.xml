@@ -1,14 +1,14 @@
 <?xml version="1.0" encoding="utf-8" standalone="yes"?>
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
   <channel>
-    <title>Lost in coding</title>
-    <link>https://zzakafool.github.io/</link>
-    <description>Recent content on Lost in coding</description>
+    <title>Hahas on Lost in coding</title>
+    <link>https://zzakafool.github.io/haha/</link>
+    <description>Recent content in Hahas on Lost in coding</description>
     <generator>Hugo -- gohugo.io</generator>
     <language>en-us</language>
     <lastBuildDate>Wed, 17 Jun 2020 14:39:48 +0800</lastBuildDate>
     
-	<atom:link href="https://zzakafool.github.io/index.xml" rel="self" type="application/rss+xml" />
+	<atom:link href="https://zzakafool.github.io/haha/index.xml" rel="self" type="application/rss+xml" />
     
     
     <item>
@@ -18,15 +18,6 @@
       
       <guid>https://zzakafool.github.io/haha/test/</guid>
       <description></description>
-    </item>
-    
-    <item>
-      <title>First Post</title>
-      <link>https://zzakafool.github.io/posts/first-post/</link>
-      <pubDate>Mon, 20 Apr 2020 19:32:14 +0800</pubDate>
-      
-      <guid>https://zzakafool.github.io/posts/first-post/</guid>
-      <description>Hello World </description>
     </item>
     
   </channel>
