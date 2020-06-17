@@ -6,28 +6,9 @@
     <description>Recent content on Lost in coding</description>
     <generator>Hugo -- gohugo.io</generator>
     <language>en-us</language>
-    <lastBuildDate>Wed, 17 Jun 2020 14:39:48 +0800</lastBuildDate>
     
 	<atom:link href="https://zzakafool.github.io/index.xml" rel="self" type="application/rss+xml" />
     
-    
-    <item>
-      <title>Test</title>
-      <link>https://zzakafool.github.io/haha/test/</link>
-      <pubDate>Wed, 17 Jun 2020 14:39:48 +0800</pubDate>
-      
-      <guid>https://zzakafool.github.io/haha/test/</guid>
-      <description></description>
-    </item>
-    
-    <item>
-      <title>First Post</title>
-      <link>https://zzakafool.github.io/posts/first-post/</link>
-      <pubDate>Mon, 20 Apr 2020 19:32:14 +0800</pubDate>
-      
-      <guid>https://zzakafool.github.io/posts/first-post/</guid>
-      <description>Hello World </description>
-    </item>
     
   </channel>
 </rss>
