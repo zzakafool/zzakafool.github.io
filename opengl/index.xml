@@ -1,14 +1,14 @@
 <?xml version="1.0" encoding="utf-8" standalone="yes"?>
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
   <channel>
-    <title>Lost in coding</title>
-    <link>https://zzakafool.github.io/</link>
-    <description>Recent content on Lost in coding</description>
+    <title>Opengls on Lost in coding</title>
+    <link>https://zzakafool.github.io/opengl/</link>
+    <description>Recent content in Opengls on Lost in coding</description>
     <generator>Hugo -- gohugo.io</generator>
     <language>en-us</language>
     <lastBuildDate>Thu, 18 Jun 2020 12:46:54 +0800</lastBuildDate>
     
-	<atom:link href="https://zzakafool.github.io/index.xml" rel="self" type="application/rss+xml" />
+	<atom:link href="https://zzakafool.github.io/opengl/index.xml" rel="self" type="application/rss+xml" />
     
     
     <item>
@@ -22,18 +22,6 @@
  OpenGL是一个开放的硬件无关的接口，我们在使用时不需要考虑设备的操作系统或视窗系统的具体实现，实现OpenGL的方式由设备厂商来确定，可以通过硬件或者软件的形式来实现，在现代的实现方案中，OpenGL往往通过硬件形式，在GPU中实现。 OpenGL是使用“客户端-服务器”的形式实现的。我们编写的程序可以看做客户端，而计算机图形硬件厂商提供的OpenGL实现可以看做服务端(我们通过OpenGL提供的函数向图形硬件发起服务请求)。 OpenGL是基于“光栅化”的系统，“光栅化”是计算机图形学中实现渲染(三维模型到二维图像)的一种方式，但是图形学中渲染的方式不止这一种，比如光线追踪等技术。 OpenGL中有Shader的概念，Shader可以看做是图形硬件执行的一种特殊的程序，它是硬件设备提供给程序开发人员的自定义接口(通过脚本语言实现shader程序，在渲染管线的特定时期执行对应的shader程序，类似于钩子函数)  1.2 OpenGL程序初探 这一节是编译和解释OpenGL红宝书上的第一个程序，很多人在编译这个程序时遇上了各种各样的问题，加上这个程序的写法又很有技巧性，很容易让人望而生畏，所以这也是这本书里面的第一个小难关。 相关库的编译就不在多说了，网上可以找到很多的教程,如果是Linux用户，也可以直接通过包管理工具安装相应的库，我在编译时使用的是Manjaro,直接通过pacman和yay就能下载到对应的glfw3和glew库(我在编译这个程序时将书上用的gl3w库换成了glew,原来用过而已)。 趁此机会，我还学习了下cmake的用法，利用cmake来组织这个程序，下面是我修改的部分代码的内容。
 c++代码， triangle.cpp
 #include &amp;lt;iostream&amp;gt;#include &amp;lt;GL/glew.h&amp;gt;#include &amp;#34;LoadShaders.h&amp;#34;#include &amp;lt;GLFW/glfw3.h&amp;gt;using namespace std; enum VAO_IDs{Triangles, NumVAOs}; enum Buffer_IDs{ArrayBuffer, NumBuffers}; enum Attrb_IDs{vPosition = 0}; GLuint VAOs[NumVAOs]; GLuint Buffers[NumBuffers]; const GLuint NumVertices = 6; void init(void) { static const GLfloat vertices[NumVertices][2]={ {-0.90, -0.90}, { 0.85, -0.90}, {-0.90, 0.85}, { 0.90, -0.85}, { 0.90, 0.90}, {-0.85, 0.90}, }; glCreateBuffers(NumBuffers, Buffers); glNamedBufferStorage(Buffers[ArrayBuffer], sizeof(vertices), vertices, 0); ShaderInfo shaders[] = { {GL_VERTEX_SHADER, &amp;#34;.</description>
-    </item>
-    
-    <item>
-      <title>碎碎念</title>
-      <link>https://zzakafool.github.io/life/talk/</link>
-      <pubDate>Wed, 17 Jun 2020 14:59:38 +0800</pubDate>
-      
-      <guid>https://zzakafool.github.io/life/talk/</guid>
-      <description>学计算机也已经有6、7年(本科4年，研究生这1,2年)了，却还是感觉自己有点迷茫，没啥技术沉淀。感兴趣的东西一大把，书也没有少买，但扎扎实实弄懂深入的还是没有。在学校里活还是照干，要用的技术也是在学，事情也能干得不错，但是在业余时间我发现自己还真的很难去学习新东西，也不是没花时间，但总是三天打鱼两天晒网，这天想干这个，明天想搞那个(我想我解决问题的能力还不错，但是主动学习的能力确实挺欠缺的)。真的，我开始有点搞不清楚我是否真的喜欢这个行业，是否愿意把精力投入进去，毕竟当年最想学的还是计算机。
-开这个博客的目的是想督促自己，记录自己学习每一门技术。一方面，写下的东西会让自己觉得充实，有所收获，另一方面，记录本身也方便自己今后回忆和总结。学一门东西就认认真真地学到底，开一个坑就老老实实地填完。我不相信我自己连看完一本书，学会一门新技术的能力都没有。
-我现在不太相信“学习是快乐的”这种说法，在我看来学习这件事本身是很乏味的，就算所学的内容再怎么有趣，再怎么有意思，在接收他人知识，尝试理解新东西，搞清楚难题这样的一系列过程中，还是缺乏那种参与感和成就感，因为这个过程吸收他人的东西远多于自己创造东西。但是，“学会某件东西”，带给自己的乐趣倒是很多，自己可以依靠学到的内容创造一些新内容，做一些很cool的事，这种成就感也是我一直在追求的东西。所以，学习这件事还是自己不得不经过的过程。
-总是书生意气，这辈子也没想过发啥财，所追求的还是内心的充实和快乐，也没啥好急的，悠哉悠哉地慢慢走下去就行。</description>
     </item>
     
   </channel>
