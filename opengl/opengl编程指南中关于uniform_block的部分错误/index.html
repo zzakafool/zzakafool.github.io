@@ -1,0 +1,672 @@
+<!doctype html>
+<html lang="en-us">
+  <head>
+    <title>《OpenGL编程指南》中关于Uniform_Block的部分错误 // Lost in coding</title>
+    <meta charset="utf-8" />
+    <meta name="generator" content="Hugo 0.73.0-DEV" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="author" content="zzakafool" />
+    <meta name="description" content="" />
+    <link rel="stylesheet" href="https://zzakafool.github.io/css/main.min.f90f5edd436ec7b74ad05479a05705770306911f721193e7845948fb07fe1335.css" />
+
+    
+    <meta name="twitter:card" content="summary"/>
+<meta name="twitter:title" content="《OpenGL编程指南》中关于Uniform_Block的部分错误"/>
+<meta name="twitter:description" content="碎碎念 在《OpenGL编程指南(第九版)》第2章的2.4节(数据块接口)中，作者介绍了Uniform Block的概念以及部分API，说实话，第一遍看的时候确实没看懂多少内容，Uniform Block咋用也不知道。不过还好早就有了心理准备，本来在买书的时候就知道红宝书是被大家称为字典书的。所幸看完2.4节，作者提供了一个例程，作者通过一个例子，介绍了Uniform Block的大致使用流程，这段代码我抄完后测试能够正常运行，之后我尝试对代码进行修改，打算再加入一个Unifrom Block，通过一个Buffer Object进行传值，然后&hellip;&hellip;然后就挖了一手好坑，改了一下午BUG。最后我发现对于Buffer Object还是理解有问题， 而且《OpenGL编程指南》中关于Uniform Block的API部分的理解是有问题的。
+问题分析 下面记录下我开始进行尝试的代码。
+#include &lt;cstdio&gt;#include &lt;cstdlib&gt;#include &lt;cstring&gt;#include &lt;iostream&gt;#include &lt;GL/glew.h&gt;#include &#34;LoadShaders.h&#34;#include &lt;GLFW/glfw3.h&gt;using namespace std; enum VAO_IDs{Triangles, NumVAOs}; enum Buffer_IDs{ArrayBuffer, NumBuffers}; enum Attrb_IDs{vPos = 0}; GLuint VAOs[NumVAOs]; GLuint Buffers[NumBuffers]; const GLuint NumVertices = 3; size_t TypeSize(GLenum type) { size_t size; #define CASE(Enum, Count, Type) \ case Enum : size = Count * sizeof(Type); break  switch(type){ CASE(GL_FLOAT, 1, GLfloat); CASE(GL_FLOAT_VEC2, 2, GLfloat); CASE(GL_FLOAT_VEC3, 3, GLfloat); CASE(GL_FLOAT_VEC4, 4, GLfloat); CASE(GL_INT, 1, GLint); CASE(GL_INT_VEC2, 2, GLint); CASE(GL_INT_VEC3, 3, GLint); CASE(GL_INT_VEC4, 4, GLint); CASE(GL_UNSIGNED_INT, 1, GLuint); CASE(GL_UNSIGNED_INT_VEC2, 2, GLuint); CASE(GL_UNSIGNED_INT_VEC3, 3, GLuint); CASE(GL_UNSIGNED_INT_VEC4, 4, GLuint); CASE(GL_BOOL, 1, GLboolean); CASE(GL_BOOL_VEC2, 2, GLboolean); CASE(GL_BOOL_VEC3, 3, GLboolean); CASE(GL_BOOL_VEC4, 4, GLboolean); CASE(GL_FLOAT_MAT2, 4, GLfloat); CASE(GL_FLOAT_MAT2x3, 6, GLfloat); CASE(GL_FLOAT_MAT2x4, 8, GLfloat); CASE(GL_FLOAT_MAT3, 9, GLfloat); CASE(GL_FLOAT_MAT3x2, 6, GLfloat); CASE(GL_FLOAT_MAT3x4, 12, GLfloat); CASE(GL_FLOAT_MAT4, 16, GLfloat); CASE(GL_FLOAT_MAT4x2, 8, GLfloat); CASE(GL_FLOAT_MAT4x3, 12, GLfloat); #undef CASE  default: fprintf(stderr, &#34;unknow type: 0x%x\n&#34;, type); exit(EXIT_FAILURE); break; } return size; } void init(void) { GLuint program; glClearColor(1, 0, 0, 1); ShaderInfo shaders[] = { {GL_VERTEX_SHADER, &#34;."/>
+
+    <meta property="og:title" content="《OpenGL编程指南》中关于Uniform_Block的部分错误" />
+<meta property="og:description" content="碎碎念 在《OpenGL编程指南(第九版)》第2章的2.4节(数据块接口)中，作者介绍了Uniform Block的概念以及部分API，说实话，第一遍看的时候确实没看懂多少内容，Uniform Block咋用也不知道。不过还好早就有了心理准备，本来在买书的时候就知道红宝书是被大家称为字典书的。所幸看完2.4节，作者提供了一个例程，作者通过一个例子，介绍了Uniform Block的大致使用流程，这段代码我抄完后测试能够正常运行，之后我尝试对代码进行修改，打算再加入一个Unifrom Block，通过一个Buffer Object进行传值，然后&hellip;&hellip;然后就挖了一手好坑，改了一下午BUG。最后我发现对于Buffer Object还是理解有问题， 而且《OpenGL编程指南》中关于Uniform Block的API部分的理解是有问题的。
+问题分析 下面记录下我开始进行尝试的代码。
+#include &lt;cstdio&gt;#include &lt;cstdlib&gt;#include &lt;cstring&gt;#include &lt;iostream&gt;#include &lt;GL/glew.h&gt;#include &#34;LoadShaders.h&#34;#include &lt;GLFW/glfw3.h&gt;using namespace std; enum VAO_IDs{Triangles, NumVAOs}; enum Buffer_IDs{ArrayBuffer, NumBuffers}; enum Attrb_IDs{vPos = 0}; GLuint VAOs[NumVAOs]; GLuint Buffers[NumBuffers]; const GLuint NumVertices = 3; size_t TypeSize(GLenum type) { size_t size; #define CASE(Enum, Count, Type) \ case Enum : size = Count * sizeof(Type); break  switch(type){ CASE(GL_FLOAT, 1, GLfloat); CASE(GL_FLOAT_VEC2, 2, GLfloat); CASE(GL_FLOAT_VEC3, 3, GLfloat); CASE(GL_FLOAT_VEC4, 4, GLfloat); CASE(GL_INT, 1, GLint); CASE(GL_INT_VEC2, 2, GLint); CASE(GL_INT_VEC3, 3, GLint); CASE(GL_INT_VEC4, 4, GLint); CASE(GL_UNSIGNED_INT, 1, GLuint); CASE(GL_UNSIGNED_INT_VEC2, 2, GLuint); CASE(GL_UNSIGNED_INT_VEC3, 3, GLuint); CASE(GL_UNSIGNED_INT_VEC4, 4, GLuint); CASE(GL_BOOL, 1, GLboolean); CASE(GL_BOOL_VEC2, 2, GLboolean); CASE(GL_BOOL_VEC3, 3, GLboolean); CASE(GL_BOOL_VEC4, 4, GLboolean); CASE(GL_FLOAT_MAT2, 4, GLfloat); CASE(GL_FLOAT_MAT2x3, 6, GLfloat); CASE(GL_FLOAT_MAT2x4, 8, GLfloat); CASE(GL_FLOAT_MAT3, 9, GLfloat); CASE(GL_FLOAT_MAT3x2, 6, GLfloat); CASE(GL_FLOAT_MAT3x4, 12, GLfloat); CASE(GL_FLOAT_MAT4, 16, GLfloat); CASE(GL_FLOAT_MAT4x2, 8, GLfloat); CASE(GL_FLOAT_MAT4x3, 12, GLfloat); #undef CASE  default: fprintf(stderr, &#34;unknow type: 0x%x\n&#34;, type); exit(EXIT_FAILURE); break; } return size; } void init(void) { GLuint program; glClearColor(1, 0, 0, 1); ShaderInfo shaders[] = { {GL_VERTEX_SHADER, &#34;." />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://zzakafool.github.io/opengl/opengl%E7%BC%96%E7%A8%8B%E6%8C%87%E5%8D%97%E4%B8%AD%E5%85%B3%E4%BA%8Euniform_block%E7%9A%84%E9%83%A8%E5%88%86%E9%94%99%E8%AF%AF/" />
+<meta property="article:published_time" content="2020-06-19T23:36:42+08:00" />
+<meta property="article:modified_time" content="2020-06-19T23:36:42+08:00" />
+
+
+  </head>
+  <body>
+    <header class="app-header">
+      <a href="https://zzakafool.github.io/"><img class="app-header-avatar" src="/pic.png" alt="zzakafool" /></a>
+      <h1>zzakafool</h1>
+      <p>正经人谁写Blog啊~~</p>
+      <div class="app-header-social">
+        
+          <a target="_blank" href="https://github.com/zzakafool" rel="noreferrer noopener"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon icon-github">
+  <title>github</title>
+  <path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"></path>
+</svg></a>
+        
+      </div>
+    </header>
+    <main class="app-container">
+      
+  <article class="post">
+    <header class="post-header">
+      <h1 class ="post-title">《OpenGL编程指南》中关于Uniform_Block的部分错误</h1>
+      <div class="post-meta">
+        <div>
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon icon-calendar">
+  <title>calendar</title>
+  <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line>
+</svg>
+          Jun 19, 2020
+        </div>
+        <div>
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon icon-clock">
+  <title>clock</title>
+  <circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline>
+</svg>
+          7 min read
+        </div></div>
+    </header>
+    <div class="post-content">
+      <h2 id="碎碎念">碎碎念</h2>
+<p>在《OpenGL编程指南(第九版)》第2章的2.4节(数据块接口)中，作者介绍了Uniform Block的概念以及部分API，说实话，第一遍看的时候确实没看懂多少内容，Uniform Block咋用也不知道。不过还好早就有了心理准备，本来在买书的时候就知道红宝书是被大家称为字典书的。所幸看完2.4节，作者提供了一个例程，作者通过一个例子，介绍了Uniform Block的大致使用流程，这段代码我抄完后测试能够正常运行，之后我尝试对代码进行修改，打算再加入一个Unifrom Block，通过一个Buffer Object进行传值，然后&hellip;&hellip;然后就挖了一手好坑，改了一下午BUG。最后我发现对于Buffer Object还是理解有问题， 而且《OpenGL编程指南》中关于Uniform Block的API部分的理解是有问题的。</p>
+<h2 id="问题分析">问题分析</h2>
+<p>下面记录下我开始进行尝试的代码。</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-c++" data-lang="c++"><span style="color:#75715e">#include</span> <span style="color:#75715e">&lt;cstdio&gt;</span><span style="color:#75715e">
+</span><span style="color:#75715e">#include</span> <span style="color:#75715e">&lt;cstdlib&gt;</span><span style="color:#75715e">
+</span><span style="color:#75715e">#include</span> <span style="color:#75715e">&lt;cstring&gt;</span><span style="color:#75715e">
+</span><span style="color:#75715e">#include</span> <span style="color:#75715e">&lt;iostream&gt;</span><span style="color:#75715e">
+</span><span style="color:#75715e">#include</span> <span style="color:#75715e">&lt;GL/glew.h&gt;</span><span style="color:#75715e">
+</span><span style="color:#75715e">#include</span> <span style="color:#75715e">&#34;LoadShaders.h&#34;</span><span style="color:#75715e">
+</span><span style="color:#75715e">#include</span> <span style="color:#75715e">&lt;GLFW/glfw3.h&gt;</span><span style="color:#75715e">
+</span><span style="color:#75715e"></span><span style="color:#66d9ef">using</span> <span style="color:#66d9ef">namespace</span> std;
+
+<span style="color:#66d9ef">enum</span> <span style="color:#a6e22e">VAO_IDs</span>{Triangles, NumVAOs};
+<span style="color:#66d9ef">enum</span> <span style="color:#a6e22e">Buffer_IDs</span>{ArrayBuffer, NumBuffers};
+<span style="color:#66d9ef">enum</span> <span style="color:#a6e22e">Attrb_IDs</span>{vPos <span style="color:#f92672">=</span> <span style="color:#ae81ff">0</span>};
+
+GLuint VAOs[NumVAOs];
+GLuint Buffers[NumBuffers];
+
+<span style="color:#66d9ef">const</span> GLuint NumVertices <span style="color:#f92672">=</span> <span style="color:#ae81ff">3</span>;
+
+size_t <span style="color:#a6e22e">TypeSize</span>(GLenum type)
+{
+    size_t size;
+
+    <span style="color:#75715e">#define CASE(Enum, Count, Type) \
+</span><span style="color:#75715e">    case Enum : size = Count * sizeof(Type); break
+</span><span style="color:#75715e"></span>
+    <span style="color:#66d9ef">switch</span>(type){
+        CASE(GL_FLOAT,              <span style="color:#ae81ff">1</span>,      GLfloat);
+        CASE(GL_FLOAT_VEC2,         <span style="color:#ae81ff">2</span>,      GLfloat);
+        CASE(GL_FLOAT_VEC3,         <span style="color:#ae81ff">3</span>,      GLfloat);
+        CASE(GL_FLOAT_VEC4,         <span style="color:#ae81ff">4</span>,      GLfloat);
+        CASE(GL_INT,                <span style="color:#ae81ff">1</span>,      GLint);
+        CASE(GL_INT_VEC2,           <span style="color:#ae81ff">2</span>,      GLint);
+        CASE(GL_INT_VEC3,           <span style="color:#ae81ff">3</span>,      GLint);
+        CASE(GL_INT_VEC4,           <span style="color:#ae81ff">4</span>,      GLint);
+        CASE(GL_UNSIGNED_INT,       <span style="color:#ae81ff">1</span>,      GLuint);
+        CASE(GL_UNSIGNED_INT_VEC2,  <span style="color:#ae81ff">2</span>,      GLuint);
+        CASE(GL_UNSIGNED_INT_VEC3,  <span style="color:#ae81ff">3</span>,      GLuint);
+        CASE(GL_UNSIGNED_INT_VEC4,  <span style="color:#ae81ff">4</span>,      GLuint);
+        CASE(GL_BOOL,               <span style="color:#ae81ff">1</span>,      GLboolean);
+        CASE(GL_BOOL_VEC2,          <span style="color:#ae81ff">2</span>,      GLboolean);
+        CASE(GL_BOOL_VEC3,          <span style="color:#ae81ff">3</span>,      GLboolean);
+        CASE(GL_BOOL_VEC4,          <span style="color:#ae81ff">4</span>,      GLboolean);
+        CASE(GL_FLOAT_MAT2,         <span style="color:#ae81ff">4</span>,      GLfloat);
+        CASE(GL_FLOAT_MAT2x3,       <span style="color:#ae81ff">6</span>,      GLfloat);
+        CASE(GL_FLOAT_MAT2x4,       <span style="color:#ae81ff">8</span>,      GLfloat);
+        CASE(GL_FLOAT_MAT3,         <span style="color:#ae81ff">9</span>,      GLfloat);
+        CASE(GL_FLOAT_MAT3x2,       <span style="color:#ae81ff">6</span>,      GLfloat);
+        CASE(GL_FLOAT_MAT3x4,       <span style="color:#ae81ff">12</span>,     GLfloat);
+        CASE(GL_FLOAT_MAT4,         <span style="color:#ae81ff">16</span>,     GLfloat);
+        CASE(GL_FLOAT_MAT4x2,       <span style="color:#ae81ff">8</span>,      GLfloat);
+        CASE(GL_FLOAT_MAT4x3,       <span style="color:#ae81ff">12</span>,     GLfloat);
+        <span style="color:#75715e">#undef CASE
+</span><span style="color:#75715e"></span>        
+        <span style="color:#66d9ef">default</span><span style="color:#f92672">:</span>
+            fprintf(stderr, <span style="color:#e6db74">&#34;unknow type: 0x%x</span><span style="color:#ae81ff">\n</span><span style="color:#e6db74">&#34;</span>, type);
+            exit(EXIT_FAILURE);
+            <span style="color:#66d9ef">break</span>;
+    }
+    
+    <span style="color:#66d9ef">return</span> size;
+}
+
+<span style="color:#66d9ef">void</span> <span style="color:#a6e22e">init</span>(<span style="color:#66d9ef">void</span>)
+{
+    GLuint program;
+
+    glClearColor(<span style="color:#ae81ff">1</span>, <span style="color:#ae81ff">0</span>, <span style="color:#ae81ff">0</span>, <span style="color:#ae81ff">1</span>);
+
+    ShaderInfo shaders[] <span style="color:#f92672">=</span> {
+        {GL_VERTEX_SHADER, <span style="color:#e6db74">&#34;./shader/uniformBlock.vert&#34;</span>},
+        {GL_FRAGMENT_SHADER, <span style="color:#e6db74">&#34;./shader/uniformBlock.frag&#34;</span>},
+        {GL_NONE, NULL}
+    };
+
+    program <span style="color:#f92672">=</span> LoadShaders(shaders);
+    glUseProgram(program);
+
+    <span style="color:#75715e">//初始化uniform块&#34;Uniforms&#34;中的变量
+</span><span style="color:#75715e"></span>    <span style="color:#66d9ef">enum</span> {Uniforms, ColorUnif, NumUBO};
+    GLuint uboIndex[NumUBO];               <span style="color:#75715e">//事实上这里应该是ubIndex，  Uniform Block的index， ubo是另外一个概念
+</span><span style="color:#75715e"></span>    GLint uboSize[NumUBO];
+    GLuint ubo;
+    GLvoid <span style="color:#f92672">*</span>buffer;
+
+    uboIndex[Uniforms] <span style="color:#f92672">=</span> glGetUniformBlockIndex(program, <span style="color:#e6db74">&#34;Uniforms&#34;</span>);
+    uboIndex[ColorUnif] <span style="color:#f92672">=</span> glGetUniformBlockIndex(program, <span style="color:#e6db74">&#34;ColorUnif&#34;</span>);
+
+    cout <span style="color:#f92672">&lt;&lt;</span> uboIndex[Uniforms] <span style="color:#f92672">&lt;&lt;</span> endl;
+    cout <span style="color:#f92672">&lt;&lt;</span> uboIndex[ColorUnif] <span style="color:#f92672">&lt;&lt;</span>endl;
+
+    glGetActiveUniformBlockiv(program, uboIndex[Uniforms], GL_UNIFORM_BLOCK_DATA_SIZE, <span style="color:#f92672">&amp;</span>uboSize[Uniforms]);
+    cout <span style="color:#f92672">&lt;&lt;</span> uboSize[Uniforms] <span style="color:#f92672">&lt;&lt;</span>endl;
+    glGetActiveUniformBlockiv(program, uboIndex[ColorUnif], GL_UNIFORM_BLOCK_DATA_SIZE, <span style="color:#f92672">&amp;</span>uboSize[ColorUnif]);
+    cout <span style="color:#f92672">&lt;&lt;</span> uboSize[ColorUnif] <span style="color:#f92672">&lt;&lt;</span>endl;
+    buffer <span style="color:#f92672">=</span> malloc(uboSize[Uniforms] <span style="color:#f92672">+</span> uboSize[ColorUnif]);
+
+    <span style="color:#66d9ef">if</span>(buffer <span style="color:#f92672">==</span> NULL)
+    {
+        fprintf(stderr, <span style="color:#e6db74">&#34;Unable to allocate buffer</span><span style="color:#ae81ff">\n</span><span style="color:#e6db74">&#34;</span>);
+        exit(EXIT_FAILURE);
+    }
+    <span style="color:#66d9ef">else</span>
+    {
+        <span style="color:#66d9ef">enum</span>{Translation, Scale, Rotation, Enabled, NumUniforms};
+
+        <span style="color:#75715e">//准备存储在缓存对象中的值
+</span><span style="color:#75715e"></span>        GLfloat scale <span style="color:#f92672">=</span> <span style="color:#ae81ff">0.5</span>;
+        GLfloat translation[] <span style="color:#f92672">=</span> {<span style="color:#ae81ff">0.3</span>, <span style="color:#ae81ff">0.3</span>, <span style="color:#ae81ff">0.0</span>};
+        GLfloat rotation[] <span style="color:#f92672">=</span> {<span style="color:#ae81ff">90</span>, <span style="color:#ae81ff">0.0</span>, <span style="color:#ae81ff">0.0</span>, <span style="color:#ae81ff">1.0</span>};
+        GLboolean enabled <span style="color:#f92672">=</span> GL_TRUE;
+
+        <span style="color:#75715e">//对于UniformBlock中的每一个成员的属性
+</span><span style="color:#75715e"></span>        <span style="color:#66d9ef">const</span> <span style="color:#66d9ef">char</span> <span style="color:#f92672">*</span>names[NumUniforms] <span style="color:#f92672">=</span> {
+            <span style="color:#e6db74">&#34;translation&#34;</span>,
+            <span style="color:#e6db74">&#34;scale&#34;</span>,
+            <span style="color:#e6db74">&#34;rotation&#34;</span>,
+            <span style="color:#e6db74">&#34;enabled&#34;</span>
+        };
+        GLuint indices[NumUniforms];
+        GLint size[NumUniforms];
+        GLint offset[NumUniforms];
+        GLint type[NumUniforms];
+
+        glGetUniformIndices(program, NumUniforms, names, indices);
+        glGetActiveUniformsiv(program, NumUniforms, indices, GL_UNIFORM_OFFSET, offset);
+        glGetActiveUniformsiv(program, NumUniforms, indices, GL_UNIFORM_SIZE, size);
+        glGetActiveUniformsiv(program, NumUniforms, indices, GL_UNIFORM_TYPE, type);
+
+        memcpy(buffer <span style="color:#f92672">+</span> offset[Scale], <span style="color:#f92672">&amp;</span>scale, size[Scale]<span style="color:#f92672">*</span>TypeSize(type[Scale]));
+        memcpy(buffer <span style="color:#f92672">+</span> offset[Translation], <span style="color:#f92672">&amp;</span>translation, size[Translation]<span style="color:#f92672">*</span>TypeSize(type[Translation]));
+        memcpy(buffer <span style="color:#f92672">+</span> offset[Rotation], <span style="color:#f92672">&amp;</span>rotation, size[Rotation]<span style="color:#f92672">*</span>TypeSize(type[Rotation]));
+        memcpy(buffer <span style="color:#f92672">+</span> offset[Enabled], <span style="color:#f92672">&amp;</span>enabled, size[Enabled] <span style="color:#f92672">*</span> TypeSize(type[Enabled]));
+
+
+
+        <span style="color:#66d9ef">enum</span> {InColor, K, NumColorUnif};
+        GLfloat inColor[] <span style="color:#f92672">=</span> {
+            <span style="color:#ae81ff">0.0f</span>, <span style="color:#ae81ff">0.0f</span>, <span style="color:#ae81ff">1.0f</span>,
+            <span style="color:#ae81ff">0.0f</span>, <span style="color:#ae81ff">1.0f</span>, <span style="color:#ae81ff">0.0f</span>,
+            <span style="color:#ae81ff">1.0f</span>, <span style="color:#ae81ff">0.0f</span>, <span style="color:#ae81ff">0.0f</span>
+        };
+        GLfloat k <span style="color:#f92672">=</span> <span style="color:#ae81ff">5</span>;
+
+        <span style="color:#66d9ef">const</span> <span style="color:#66d9ef">char</span> <span style="color:#f92672">*</span>inames[NumColorUnif] <span style="color:#f92672">=</span> {
+            <span style="color:#e6db74">&#34;inColor&#34;</span>,
+            <span style="color:#e6db74">&#34;k&#34;</span>,
+        };
+
+        GLuint iIndices[NumColorUnif];
+        GLint iSize[NumColorUnif];
+        GLint iOffset[NumColorUnif];
+        GLint iType[NumColorUnif];
+
+        glGetUniformIndices(program, NumColorUnif, inames, iIndices);
+        glGetActiveUniformsiv(program, NumColorUnif, iIndices, GL_UNIFORM_OFFSET, iOffset);
+        glGetActiveUniformsiv(program, NumColorUnif, iIndices, GL_UNIFORM_SIZE, iSize);
+        glGetActiveUniformsiv(program, NumColorUnif, iIndices, GL_UNIFORM_TYPE, iType);
+
+        <span style="color:#66d9ef">for</span> (<span style="color:#66d9ef">int</span> i <span style="color:#f92672">=</span> <span style="color:#ae81ff">0</span>;i<span style="color:#f92672">&lt;</span>NumColorUnif;<span style="color:#f92672">++</span>i)
+        {
+            cout <span style="color:#f92672">&lt;&lt;</span> iOffset[i] <span style="color:#f92672">&lt;&lt;</span> endl;
+        }
+
+        memcpy(buffer <span style="color:#f92672">+</span> uboSize[Uniforms] <span style="color:#f92672">+</span> iOffset[InColor], inColor,  iSize[InColor]<span style="color:#f92672">*</span>TypeSize(iType[InColor]));
+        memcpy(buffer <span style="color:#f92672">+</span> uboSize[Uniforms] <span style="color:#f92672">+</span> iOffset[K], <span style="color:#f92672">&amp;</span>k, iSize[K] <span style="color:#f92672">*</span> TypeSize(iType[K]));
+
+        GLuint ubo;                                                                     <span style="color:#75715e">//绑定GL_UNIFORM_BUFFER的BufferObject才被称做UBO
+</span><span style="color:#75715e"></span>        glCreateBuffers(<span style="color:#ae81ff">1</span>, <span style="color:#f92672">&amp;</span>ubo);
+        glBindBuffer(GL_UNIFORM_BUFFER, ubo);
+        glBufferData(GL_UNIFORM_BUFFER, uboSize[Uniforms], buffer, GL_STATIC_DRAW);
+        glBindBuffer(GL_UNIFORM_BUFFER, <span style="color:#ae81ff">0</span>);
+        glBindBufferRange(GL_UNIFORM_BUFFER, uboIndex[Uniforms], ubo, <span style="color:#ae81ff">0</span>, uboSize[Uniforms]);                        <span style="color:#75715e">//我这里尝试的是将一个ubo与对应的两个UniformBlock关联
+</span><span style="color:#75715e"></span>        glBindBufferRange(GL_UNIFORM_BUFFER, uboIndex[ColorUnif], ubo, uboSize[Uniforms], uboSize[ColorUnif]);
+
+    }
+    
+    GLfloat vertices[NumVertices][<span style="color:#ae81ff">2</span>] <span style="color:#f92672">=</span>{
+        {<span style="color:#f92672">-</span><span style="color:#ae81ff">0.5</span>, <span style="color:#f92672">-</span><span style="color:#ae81ff">0.5</span>},
+        { <span style="color:#ae81ff">0.0</span>,  <span style="color:#ae81ff">0.5</span>},
+        { <span style="color:#ae81ff">0.5</span>, <span style="color:#f92672">-</span><span style="color:#ae81ff">0.5</span>},
+    };
+
+    glCreateBuffers(NumBuffers, Buffers);
+    glNamedBufferStorage(Buffers[ArrayBuffer], <span style="color:#66d9ef">sizeof</span>(vertices), vertices, <span style="color:#ae81ff">0</span>);
+
+    glGenVertexArrays(NumVAOs, VAOs);
+    glBindVertexArray(VAOs[Triangles]);
+    glBindBuffer(GL_ARRAY_BUFFER, Buffers[ArrayBuffer]);
+    glVertexAttribPointer(vPos, <span style="color:#ae81ff">2</span>, GL_FLOAT, GL_FALSE, <span style="color:#ae81ff">0</span>, (<span style="color:#66d9ef">void</span> <span style="color:#f92672">*</span>)<span style="color:#ae81ff">0</span>);
+    glEnableVertexAttribArray(vPos);
+}
+
+<span style="color:#66d9ef">void</span> <span style="color:#a6e22e">display</span>(<span style="color:#66d9ef">void</span>)
+{
+    <span style="color:#66d9ef">static</span> <span style="color:#66d9ef">const</span> <span style="color:#66d9ef">float</span> black[] <span style="color:#f92672">=</span> {<span style="color:#ae81ff">0.0f</span>, <span style="color:#ae81ff">0.0f</span>, <span style="color:#ae81ff">0.0f</span>, <span style="color:#ae81ff">0.0f</span>};
+    glClearBufferfv(GL_COLOR, <span style="color:#ae81ff">0</span>, black);
+
+    glBindVertexArray(VAOs[Triangles]);
+    glDrawArrays(GL_TRIANGLES, <span style="color:#ae81ff">0</span>, NumVertices);
+}
+
+<span style="color:#66d9ef">int</span> <span style="color:#a6e22e">main</span>(<span style="color:#66d9ef">int</span> argc, <span style="color:#66d9ef">char</span> <span style="color:#f92672">*</span>argv[])
+{
+    glfwInit();
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, <span style="color:#ae81ff">3</span>);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, <span style="color:#ae81ff">3</span>);
+    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+    GLFWwindow <span style="color:#f92672">*</span>window <span style="color:#f92672">=</span> glfwCreateWindow(<span style="color:#ae81ff">640</span>, <span style="color:#ae81ff">480</span>, <span style="color:#e6db74">&#34;Triangles&#34;</span>, NULL, NULL);
+
+    glfwMakeContextCurrent(window);
+
+    glewExperimental <span style="color:#f92672">=</span> GL_TRUE;
+
+    GLenum res <span style="color:#f92672">=</span> glewInit();
+    <span style="color:#66d9ef">if</span>(res <span style="color:#f92672">!=</span> GLEW_OK)
+    {
+        std<span style="color:#f92672">::</span>cout <span style="color:#f92672">&lt;&lt;</span> <span style="color:#e6db74">&#34;Failed to initialize GLEW&#34;</span> <span style="color:#f92672">&lt;&lt;</span>std<span style="color:#f92672">::</span>endl;
+        std<span style="color:#f92672">::</span>cout <span style="color:#f92672">&lt;&lt;</span> glewGetErrorString(res) <span style="color:#f92672">&lt;&lt;</span>std<span style="color:#f92672">::</span>endl;
+        <span style="color:#66d9ef">return</span> <span style="color:#f92672">-</span><span style="color:#ae81ff">1</span>;
+    }
+
+    
+    init();
+
+    <span style="color:#66d9ef">while</span>(<span style="color:#f92672">!</span>glfwWindowShouldClose(window))
+    {
+        display();
+        glfwSwapBuffers(window);
+        glfwPollEvents();
+    }
+
+    glfwDestroyWindow(window);
+
+    glfwTerminate();
+
+    <span style="color:#66d9ef">return</span> <span style="color:#ae81ff">0</span>;
+}
+</code></pre></div><p>shader的内容</p>
+<pre><code>#version 450 core
+
+uniform vec3 test;
+
+uniform Uniforms{
+    vec3 translation;
+    float scale;
+    vec4 rotation;      //用一个4维向量来表示旋转，第一个分量表示旋转的角度(角度制),后面yzw分量表示所绕的旋转轴。
+    bool enabled;
+};
+
+uniform ColorUnif{
+    vec3 inColor[3];
+    float k;
+};
+
+layout(location = 0) in vec2 vPos;
+//in vec3 vColor;
+out vec4 fColor;
+
+void main()
+{
+    vec3 pos = vec3(vPos, 0.0f);
+    float angle = radians(rotation[0]);
+    vec3 axis = normalize(rotation.yzw);
+    mat3 I = mat3(1.0f);
+    mat3 S = mat3(       0,  -axis.z,  axis.y,
+                    axis.z,        0, -axis.x,
+                   -axis.y,   axis.x,       0);
+    mat3 uuT = outerProduct(axis, axis);
+    mat3 rot = uuT + cos(angle)*(I - uuT) + sin(angle)*S;
+
+    pos *= scale;
+    pos *= rot;
+    pos += translation;
+    fColor = vec4(1.0f, 0.0f, 0.0f, 1);
+    gl_Position = vec4(pos, 1);
+}
+</code></pre><pre><code>#version 450 core
+
+uniform vec3 test;
+
+uniform Uniforms{
+    vec3 translation;
+    float scale;
+    vec4 rotation;
+    bool enabled;
+};
+
+uniform ColorUnif{
+    vec3 inColor[3];
+    float k;
+};
+
+in vec4 fColor;
+out vec4 color;
+void main()
+{
+    color = vec4(inColor[0].xyz, 1.0f);
+}
+</code></pre><p>我在尝试这段代码之后，发现第二个UniformBlock的内容传不进去，在查找了很多资料后，发现，问题其实有两个。</p>
+<ol>
+<li>Uniform Block与Buffer Object的关联应该是一对一的，这里是我理解问题</li>
+<li>《OpenGL编程指南》中对于glBindBufferRange，glBindBufferBase，以及glUniformBlockBinding的描述是有问题的</li>
+</ol>
+<h2 id="关于uniform-block的一些理解">关于Uniform Block的一些理解</h2>
+<p>Uniform Block与Buffer Object之间的绑定可以参考如下两张图:
+<img src="/OpenGL/uniform_block.jpg" alt="Uniform_Block" title="Uniform_Block"></p>
+<p><img src="/OpenGL/uniform_block2.png" alt="Uniform_Block2" title="Uniform_Block2"></p>
+<p>我们可以这样理解，Uniform Block就是shader中写的“uniform{&hellip;}“ (个人理解:更准确说应该是一个指针，指针可以指向一块内存区域，将里面内容理解成{}包围的变量来使用), 在每个program(着色器程序)中，Uniform Block可以被唯一索引，我们可以使用glGetUniformBlockIndex()函数来获得Uniform Block在program中的索引。</p>
+<p>假设我们需要用到多个program(初学，还没有写过这种情况，但是想想也很常见，每个program渲染不同的物体，或者不同的效果)，每个program我们可能都想用到同样内容的一个Uniform Block,即使我们在每一套shader中都写入一样的Uniform Block，但是每个program中的Uniform Block的序号都是有可能不同的。所以，OpenGL引入了BindingPoint这样的概念，我们可以将不同的program中的同样内容的Uniform Block绑定在同一个BindingPoint,这样我们只需要一个Buffer Object(UBO)，就可以与多个program中相同内容的Uniform Block相关联，节约了显存(相比每个program中的每一个Uniform Block都关联一个Buffer Object)，想清楚这一点，就能够理解这个复杂的设计(不得不说，这种设计都是出于工程细节，不好懂确实可以理解)。我们可以使用glUniformBlockBinding()函数或者在Uniform Block前面指明layout(binding = N),指明Uniform Block与BindingPoint的对应关系则可。</p>
+<p>好，现在我们只需要将BindingPoint与对应的Buffer Object对应，就可以实现Uniform Block与Buffer Object的对应了，我们可以使用glBindBufferRange()和glBindBufferBase()来实现，前者可以将UBO中的一部分绑定至BindingPoint，后者则是绑定整个。但是注意每个UBO应该只能绑定至一个BindingPoint，否则就会犯我上面的错误(事实上也不需要UBO绑定至多个BindingPoint，因为只要将所有需要绑定这个UBO的Uniform Block绑定至同一个BindingPoint则可了嘛)</p>
+<p>此外，抄完这段代码，再谈谈我尝试理解的使用Uniform Block相对于直接使用多个Uniform变量的好处，整齐(或者整洁)就不说了，在shader里面其实也一样，因为用起来还是单独的Uniform变量。我觉得区别还是在于传值过程，如果不使用Uniform Block，那么我们对于每个program的每一个Uniform变量，都要调用相关的openGL函数，来设置其内容，而使用Uniform Block，我们只需要建立一个Buffer Object，然后向Buffer Object进行传值。</p>
+<ol>
+<li>我们向显卡传值的次数会减少(使用Uniform Block，可以用一块大的内存之间向Buffer Object赋值， 而不使用，则需要多次向显存传递Uniform变量的内容)。(多个program使用相同Uniform变量时，这样的差别会更明显)</li>
+<li>在多个program的时候(会用到相同的Uniform变量),会减少传值次显存空间。假如说在单个program中不好区分使用Uniform Block与使用多个Uniform变量对显存空间占用的区别(每个单独的Uniform变量都至少保留一份），那么在多个program的情况下，显存的使用将会减少，因为如果使用多个Uniform变量，那么，每个program都需要传单独的一份内容到显存，即使这份内容是相同的。</li>
+</ol>
+<h2 id="关于红宝书上的错误">关于红宝书上的错误</h2>
+<p>然后，我们在谈谈红宝书上的问题。红宝书上的错误主要在于对于glBindBufferRange()， glBindBufferBase()，glUniformBlockBinding()的理解有误(不止是index参数理解有问题)。
+下面是红宝书内容的截图:
+<img src="/OpenGL/redBook_Uniform_Block1.png" alt="Red_Book_Uniform_Block_1" title="Red_Book_Uniform_Block_1">
+<img src="/OpenGL/redBook_Uniform_Block2.png" alt="Red_Book_Uniform_Block_2" title="Red_Book_Uniform_Block_1">
+从第一张图可以看出，作者将两个函数中index参数搞错了，实际上index参数值得其实是BindingPoint的序号，这里我们可以从Khronos的API文档上可以看出，如下图:
+![glBindBufferRange](/OpenGL/Khronos_API_Uniform_Block.png “glBindBufferRange”)</p>
+<p>从第二张图可以看出，作者混淆了Uniform Block的index与BindingPoint，以为glUniformBlockBinding函数是设置Uniform Block的index，还强调要在glLinkProgram()之前调用。事实上这个函数是设置BindingPoint的，而且并不需要在glLinkProgram()之后调用，我们也可以看看Khronos的文档上上关于这个函数的说明。
+![glUniformBlockBinding](/OpenGL/Khronos_API_Uniform_Block2.png “glUniformBlockBinding”)</p>
+<h2 id="关于自己错误程序的修改">关于自己错误程序的修改</h2>
+<p>上面也说清楚了问题，我就直接贴修改代码吧。</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-c++" data-lang="c++"><span style="color:#75715e">#include</span> <span style="color:#75715e">&lt;cstdio&gt;</span><span style="color:#75715e">
+</span><span style="color:#75715e">#include</span> <span style="color:#75715e">&lt;cstdlib&gt;</span><span style="color:#75715e">
+</span><span style="color:#75715e">#include</span> <span style="color:#75715e">&lt;cstring&gt;</span><span style="color:#75715e">
+</span><span style="color:#75715e">#include</span> <span style="color:#75715e">&lt;iostream&gt;</span><span style="color:#75715e">
+</span><span style="color:#75715e">#include</span> <span style="color:#75715e">&lt;GL/glew.h&gt;</span><span style="color:#75715e">
+</span><span style="color:#75715e">#include</span> <span style="color:#75715e">&#34;LoadShaders.h&#34;</span><span style="color:#75715e">
+</span><span style="color:#75715e">#include</span> <span style="color:#75715e">&lt;GLFW/glfw3.h&gt;</span><span style="color:#75715e">
+</span><span style="color:#75715e"></span><span style="color:#66d9ef">using</span> <span style="color:#66d9ef">namespace</span> std;
+
+<span style="color:#66d9ef">enum</span> <span style="color:#a6e22e">VAO_IDs</span>{Triangles, NumVAOs};
+<span style="color:#66d9ef">enum</span> <span style="color:#a6e22e">Buffer_IDs</span>{ArrayBuffer, NumBuffers};
+<span style="color:#66d9ef">enum</span> <span style="color:#a6e22e">Attrb_IDs</span>{vPos <span style="color:#f92672">=</span> <span style="color:#ae81ff">0</span>};
+
+GLuint VAOs[NumVAOs];
+GLuint Buffers[NumBuffers];
+
+<span style="color:#66d9ef">const</span> GLuint NumVertices <span style="color:#f92672">=</span> <span style="color:#ae81ff">3</span>;
+
+size_t <span style="color:#a6e22e">TypeSize</span>(GLenum type)
+{
+    size_t size;
+
+    <span style="color:#75715e">#define CASE(Enum, Count, Type) \
+</span><span style="color:#75715e">    case Enum : size = Count * sizeof(Type); break
+</span><span style="color:#75715e"></span>
+    <span style="color:#66d9ef">switch</span>(type){
+        CASE(GL_FLOAT,              <span style="color:#ae81ff">1</span>,      GLfloat);
+        CASE(GL_FLOAT_VEC2,         <span style="color:#ae81ff">2</span>,      GLfloat);
+        CASE(GL_FLOAT_VEC3,         <span style="color:#ae81ff">3</span>,      GLfloat);
+        CASE(GL_FLOAT_VEC4,         <span style="color:#ae81ff">4</span>,      GLfloat);
+        CASE(GL_INT,                <span style="color:#ae81ff">1</span>,      GLint);
+        CASE(GL_INT_VEC2,           <span style="color:#ae81ff">2</span>,      GLint);
+        CASE(GL_INT_VEC3,           <span style="color:#ae81ff">3</span>,      GLint);
+        CASE(GL_INT_VEC4,           <span style="color:#ae81ff">4</span>,      GLint);
+        CASE(GL_UNSIGNED_INT,       <span style="color:#ae81ff">1</span>,      GLuint);
+        CASE(GL_UNSIGNED_INT_VEC2,  <span style="color:#ae81ff">2</span>,      GLuint);
+        CASE(GL_UNSIGNED_INT_VEC3,  <span style="color:#ae81ff">3</span>,      GLuint);
+        CASE(GL_UNSIGNED_INT_VEC4,  <span style="color:#ae81ff">4</span>,      GLuint);
+        CASE(GL_BOOL,               <span style="color:#ae81ff">1</span>,      GLboolean);
+        CASE(GL_BOOL_VEC2,          <span style="color:#ae81ff">2</span>,      GLboolean);
+        CASE(GL_BOOL_VEC3,          <span style="color:#ae81ff">3</span>,      GLboolean);
+        CASE(GL_BOOL_VEC4,          <span style="color:#ae81ff">4</span>,      GLboolean);
+        CASE(GL_FLOAT_MAT2,         <span style="color:#ae81ff">4</span>,      GLfloat);
+        CASE(GL_FLOAT_MAT2x3,       <span style="color:#ae81ff">6</span>,      GLfloat);
+        CASE(GL_FLOAT_MAT2x4,       <span style="color:#ae81ff">8</span>,      GLfloat);
+        CASE(GL_FLOAT_MAT3,         <span style="color:#ae81ff">9</span>,      GLfloat);
+        CASE(GL_FLOAT_MAT3x2,       <span style="color:#ae81ff">6</span>,      GLfloat);
+        CASE(GL_FLOAT_MAT3x4,       <span style="color:#ae81ff">12</span>,     GLfloat);
+        CASE(GL_FLOAT_MAT4,         <span style="color:#ae81ff">16</span>,     GLfloat);
+        CASE(GL_FLOAT_MAT4x2,       <span style="color:#ae81ff">8</span>,      GLfloat);
+        CASE(GL_FLOAT_MAT4x3,       <span style="color:#ae81ff">12</span>,     GLfloat);
+        <span style="color:#75715e">#undef CASE
+</span><span style="color:#75715e"></span>        
+        <span style="color:#66d9ef">default</span><span style="color:#f92672">:</span>
+            fprintf(stderr, <span style="color:#e6db74">&#34;unknow type: 0x%x</span><span style="color:#ae81ff">\n</span><span style="color:#e6db74">&#34;</span>, type);
+            exit(EXIT_FAILURE);
+            <span style="color:#66d9ef">break</span>;
+    }
+    
+    <span style="color:#66d9ef">return</span> size;
+}
+
+<span style="color:#66d9ef">void</span> <span style="color:#a6e22e">init</span>(<span style="color:#66d9ef">void</span>)
+{
+    GLuint program;
+
+    glClearColor(<span style="color:#ae81ff">1</span>, <span style="color:#ae81ff">0</span>, <span style="color:#ae81ff">0</span>, <span style="color:#ae81ff">1</span>);
+
+    ShaderInfo shaders[] <span style="color:#f92672">=</span> {
+        {GL_VERTEX_SHADER, <span style="color:#e6db74">&#34;./shader/uniformBlock.vert&#34;</span>},
+        {GL_FRAGMENT_SHADER, <span style="color:#e6db74">&#34;./shader/uniformBlock.frag&#34;</span>},
+        {GL_NONE, NULL}
+    };
+
+    program <span style="color:#f92672">=</span> LoadShaders(shaders);
+    glUseProgram(program);
+
+    <span style="color:#75715e">//初始化uniform块&#34;Uniforms&#34;中的变量
+</span><span style="color:#75715e"></span>    <span style="color:#66d9ef">enum</span> {Uniforms, ColorUnif, NumUBO};
+    GLuint uboIndex[NumUBO];
+    GLint uboSize[NumUBO];
+    GLuint ubo;
+    GLvoid <span style="color:#f92672">*</span>buffer;
+
+    uboIndex[Uniforms] <span style="color:#f92672">=</span> glGetUniformBlockIndex(program, <span style="color:#e6db74">&#34;Uniforms&#34;</span>);
+    uboIndex[ColorUnif] <span style="color:#f92672">=</span> glGetUniformBlockIndex(program, <span style="color:#e6db74">&#34;ColorUnif&#34;</span>);
+
+    cout <span style="color:#f92672">&lt;&lt;</span> uboIndex[Uniforms] <span style="color:#f92672">&lt;&lt;</span> endl;
+    cout <span style="color:#f92672">&lt;&lt;</span> uboIndex[ColorUnif] <span style="color:#f92672">&lt;&lt;</span>endl;
+
+    glGetActiveUniformBlockiv(program, uboIndex[Uniforms], GL_UNIFORM_BLOCK_DATA_SIZE, <span style="color:#f92672">&amp;</span>uboSize[Uniforms]);
+    cout <span style="color:#f92672">&lt;&lt;</span> uboSize[Uniforms] <span style="color:#f92672">&lt;&lt;</span>endl;
+    glGetActiveUniformBlockiv(program, uboIndex[ColorUnif], GL_UNIFORM_BLOCK_DATA_SIZE, <span style="color:#f92672">&amp;</span>uboSize[ColorUnif]);
+    cout <span style="color:#f92672">&lt;&lt;</span> uboSize[ColorUnif] <span style="color:#f92672">&lt;&lt;</span>endl;
+    buffer <span style="color:#f92672">=</span> malloc(uboSize[Uniforms] <span style="color:#f92672">+</span> uboSize[ColorUnif]);
+    <span style="color:#75715e">// GLvoid *tBuf = malloc(uboSize[ColorUnif]);
+</span><span style="color:#75715e"></span>
+    <span style="color:#66d9ef">if</span>(buffer <span style="color:#f92672">==</span> NULL)
+    {
+        fprintf(stderr, <span style="color:#e6db74">&#34;Unable to allocate buffer</span><span style="color:#ae81ff">\n</span><span style="color:#e6db74">&#34;</span>);
+        exit(EXIT_FAILURE);
+    }
+    <span style="color:#66d9ef">else</span>
+    {
+        <span style="color:#66d9ef">enum</span>{Translation, Scale, Rotation, Enabled, NumUniforms};
+
+        <span style="color:#75715e">//准备存储在缓存对象中的值
+</span><span style="color:#75715e"></span>        GLfloat scale <span style="color:#f92672">=</span> <span style="color:#ae81ff">0.5</span>;
+        GLfloat translation[] <span style="color:#f92672">=</span> {<span style="color:#ae81ff">0.3</span>, <span style="color:#ae81ff">0.3</span>, <span style="color:#ae81ff">0.0</span>};
+        GLfloat rotation[] <span style="color:#f92672">=</span> {<span style="color:#ae81ff">90</span>, <span style="color:#ae81ff">0.0</span>, <span style="color:#ae81ff">0.0</span>, <span style="color:#ae81ff">1.0</span>};
+        GLboolean enabled <span style="color:#f92672">=</span> GL_TRUE;
+
+        <span style="color:#75715e">//对于UniformBlock中的每一个成员的属性
+</span><span style="color:#75715e"></span>        <span style="color:#66d9ef">const</span> <span style="color:#66d9ef">char</span> <span style="color:#f92672">*</span>names[NumUniforms] <span style="color:#f92672">=</span> {
+            <span style="color:#e6db74">&#34;translation&#34;</span>,
+            <span style="color:#e6db74">&#34;scale&#34;</span>,
+            <span style="color:#e6db74">&#34;rotation&#34;</span>,
+            <span style="color:#e6db74">&#34;enabled&#34;</span>
+        };
+        GLuint indices[NumUniforms];
+        GLint size[NumUniforms];
+        GLint offset[NumUniforms];
+        GLint type[NumUniforms];
+
+        glGetUniformIndices(program, NumUniforms, names, indices);
+        glGetActiveUniformsiv(program, NumUniforms, indices, GL_UNIFORM_OFFSET, offset);
+        glGetActiveUniformsiv(program, NumUniforms, indices, GL_UNIFORM_SIZE, size);
+        glGetActiveUniformsiv(program, NumUniforms, indices, GL_UNIFORM_TYPE, type);
+
+        memcpy(buffer <span style="color:#f92672">+</span> offset[Scale], <span style="color:#f92672">&amp;</span>scale, size[Scale]<span style="color:#f92672">*</span>TypeSize(type[Scale]));
+        memcpy(buffer <span style="color:#f92672">+</span> offset[Translation], <span style="color:#f92672">&amp;</span>translation, size[Translation]<span style="color:#f92672">*</span>TypeSize(type[Translation]));
+        memcpy(buffer <span style="color:#f92672">+</span> offset[Rotation], <span style="color:#f92672">&amp;</span>rotation, size[Rotation]<span style="color:#f92672">*</span>TypeSize(type[Rotation]));
+        memcpy(buffer <span style="color:#f92672">+</span> offset[Enabled], <span style="color:#f92672">&amp;</span>enabled, size[Enabled] <span style="color:#f92672">*</span> TypeSize(type[Enabled]));
+
+
+
+        <span style="color:#66d9ef">enum</span> {InColor, K, NumColorUnif};
+        GLfloat inColor[] <span style="color:#f92672">=</span> {
+            <span style="color:#ae81ff">0.0f</span>, <span style="color:#ae81ff">0.0f</span>, <span style="color:#ae81ff">1.0f</span>,
+            <span style="color:#ae81ff">0.0f</span>, <span style="color:#ae81ff">1.0f</span>, <span style="color:#ae81ff">0.0f</span>,
+            <span style="color:#ae81ff">1.0f</span>, <span style="color:#ae81ff">0.0f</span>, <span style="color:#ae81ff">0.0f</span>
+        };
+        GLfloat k <span style="color:#f92672">=</span> <span style="color:#ae81ff">5</span>;
+
+        <span style="color:#66d9ef">const</span> <span style="color:#66d9ef">char</span> <span style="color:#f92672">*</span>inames[NumColorUnif] <span style="color:#f92672">=</span> {
+            <span style="color:#e6db74">&#34;inColor&#34;</span>,
+            <span style="color:#e6db74">&#34;k&#34;</span>,
+        };
+
+        GLuint iIndices[NumColorUnif];
+        GLint iSize[NumColorUnif];
+        GLint iOffset[NumColorUnif];
+        GLint iType[NumColorUnif];
+
+        glGetUniformIndices(program, NumColorUnif, inames, iIndices);
+        glGetActiveUniformsiv(program, NumColorUnif, iIndices, GL_UNIFORM_OFFSET, iOffset);
+        glGetActiveUniformsiv(program, NumColorUnif, iIndices, GL_UNIFORM_SIZE, iSize);
+        glGetActiveUniformsiv(program, NumColorUnif, iIndices, GL_UNIFORM_TYPE, iType);
+
+        <span style="color:#66d9ef">for</span> (<span style="color:#66d9ef">int</span> i <span style="color:#f92672">=</span> <span style="color:#ae81ff">0</span>;i<span style="color:#f92672">&lt;</span>NumColorUnif;<span style="color:#f92672">++</span>i)
+        {
+            cout <span style="color:#f92672">&lt;&lt;</span> iOffset[i] <span style="color:#f92672">&lt;&lt;</span> endl;
+        }
+
+        <span style="color:#75715e">// memcpy(tBuf + iOffset[InColor], inColor, iSize[InColor]*TypeSize(iType[InColor]));
+</span><span style="color:#75715e"></span>        <span style="color:#75715e">// //cout &lt;&lt; uboSize[Uniforms] + iOffset[InColor] &lt;&lt;endl;
+</span><span style="color:#75715e"></span>        <span style="color:#75715e">// memcpy(tBuf + iOffset[K], &amp;k, iSize[K] * TypeSize(iType[K]));
+</span><span style="color:#75715e"></span>        <span style="color:#75715e">//cout &lt;&lt; uboSize[Uniforms] + iOffset[K] &lt;&lt;endl;
+</span><span style="color:#75715e"></span>        memcpy(buffer <span style="color:#f92672">+</span> uboSize[Uniforms] <span style="color:#f92672">+</span> iOffset[InColor], inColor,  iSize[InColor]<span style="color:#f92672">*</span>TypeSize(iType[InColor]));
+        memcpy(buffer <span style="color:#f92672">+</span> uboSize[Uniforms] <span style="color:#f92672">+</span> iOffset[K], <span style="color:#f92672">&amp;</span>k, iSize[K] <span style="color:#f92672">*</span> TypeSize(iType[K]));
+
+        <span style="color:#75715e">// glCreateBuffers(1, &amp;ubo);
+</span><span style="color:#75715e"></span>        <span style="color:#75715e">// glBindBuffer(GL_UNIFORM_BUFFER, ubo);
+</span><span style="color:#75715e"></span>        <span style="color:#75715e">// glBufferData(GL_UNIFORM_BUFFER, uboSize[Uniforms], buffer, GL_STATIC_DRAW);
+</span><span style="color:#75715e"></span>        <span style="color:#75715e">// glBindBufferRange(GL_UNIFORM_BUFFER, uboIndex[Uniforms], ubo, 0, uboSize[Uniforms]);
+</span><span style="color:#75715e"></span>        <span style="color:#75715e">// glBindBufferBase(GL_UNIFORM_BUFFER, uboIndex[Uniforms], ubo);
+</span><span style="color:#75715e"></span>
+        glUniformBlockBinding(program, uboIndex[Uniforms], <span style="color:#ae81ff">0</span>);
+        glUniformBlockBinding(program, uboIndex[ColorUnif], <span style="color:#ae81ff">1</span>);
+
+        GLuint ubo;
+        glCreateBuffers(<span style="color:#ae81ff">1</span>, <span style="color:#f92672">&amp;</span>ubo);
+        glBindBuffer(GL_UNIFORM_BUFFER, ubo);
+        glBufferData(GL_UNIFORM_BUFFER, uboSize[Uniforms], buffer, GL_STATIC_DRAW);
+        glBindBuffer(GL_UNIFORM_BUFFER, <span style="color:#ae81ff">0</span>);
+        glBindBufferRange(GL_UNIFORM_BUFFER, <span style="color:#ae81ff">0</span>, ubo, <span style="color:#ae81ff">0</span>, uboSize[Uniforms]);
+
+        GLuint ubo2;
+        glCreateBuffers(<span style="color:#ae81ff">1</span>, <span style="color:#f92672">&amp;</span>ubo2);
+        glBindBuffer(GL_UNIFORM_BUFFER, ubo2);
+        glBufferData(GL_UNIFORM_BUFFER, uboSize[ColorUnif], buffer <span style="color:#f92672">+</span> uboSize[Uniforms], GL_STATIC_DRAW);
+        glBindBufferRange(GL_UNIFORM_BUFFER, <span style="color:#ae81ff">1</span>, ubo2, <span style="color:#ae81ff">0</span>, uboSize[ColorUnif]);
+
+        <span style="color:#75715e">// glBindBufferRange(GL_UNIFORM_BUFFER, 0, ubo, 0, uboSize[Uniforms]);
+</span><span style="color:#75715e"></span>        <span style="color:#75715e">// glBindBufferRange(GL_UNIFORM_BUFFER, 1, ubo, uboSize[Uniforms], uboSize[ColorUnif]);
+</span><span style="color:#75715e"></span>    }
+
+    free(buffer);       <span style="color:#75715e">//别忘了~~~
+</span><span style="color:#75715e"></span>    
+    GLfloat vertices[NumVertices][<span style="color:#ae81ff">2</span>] <span style="color:#f92672">=</span>{
+        {<span style="color:#f92672">-</span><span style="color:#ae81ff">0.5</span>, <span style="color:#f92672">-</span><span style="color:#ae81ff">0.5</span>},
+        { <span style="color:#ae81ff">0.0</span>,  <span style="color:#ae81ff">0.5</span>},
+        { <span style="color:#ae81ff">0.5</span>, <span style="color:#f92672">-</span><span style="color:#ae81ff">0.5</span>},
+    };
+
+    glCreateBuffers(NumBuffers, Buffers);
+    glNamedBufferStorage(Buffers[ArrayBuffer], <span style="color:#66d9ef">sizeof</span>(vertices), vertices, <span style="color:#ae81ff">0</span>);
+
+    glGenVertexArrays(NumVAOs, VAOs);
+    glBindVertexArray(VAOs[Triangles]);
+    glBindBuffer(GL_ARRAY_BUFFER, Buffers[ArrayBuffer]);
+    glVertexAttribPointer(vPos, <span style="color:#ae81ff">2</span>, GL_FLOAT, GL_FALSE, <span style="color:#ae81ff">0</span>, (<span style="color:#66d9ef">void</span> <span style="color:#f92672">*</span>)<span style="color:#ae81ff">0</span>);
+    glEnableVertexAttribArray(vPos);
+}
+
+<span style="color:#66d9ef">void</span> <span style="color:#a6e22e">display</span>(<span style="color:#66d9ef">void</span>)
+{
+    <span style="color:#66d9ef">static</span> <span style="color:#66d9ef">const</span> <span style="color:#66d9ef">float</span> black[] <span style="color:#f92672">=</span> {<span style="color:#ae81ff">0.0f</span>, <span style="color:#ae81ff">0.0f</span>, <span style="color:#ae81ff">0.0f</span>, <span style="color:#ae81ff">0.0f</span>};
+    glClearBufferfv(GL_COLOR, <span style="color:#ae81ff">0</span>, black);
+
+    glBindVertexArray(VAOs[Triangles]);
+    glDrawArrays(GL_TRIANGLES, <span style="color:#ae81ff">0</span>, NumVertices);
+}
+
+<span style="color:#66d9ef">int</span> <span style="color:#a6e22e">main</span>(<span style="color:#66d9ef">int</span> argc, <span style="color:#66d9ef">char</span> <span style="color:#f92672">*</span>argv[])
+{
+    glfwInit();
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, <span style="color:#ae81ff">3</span>);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, <span style="color:#ae81ff">3</span>);
+    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+    GLFWwindow <span style="color:#f92672">*</span>window <span style="color:#f92672">=</span> glfwCreateWindow(<span style="color:#ae81ff">640</span>, <span style="color:#ae81ff">480</span>, <span style="color:#e6db74">&#34;Triangles&#34;</span>, NULL, NULL);
+
+    glfwMakeContextCurrent(window);
+
+    glewExperimental <span style="color:#f92672">=</span> GL_TRUE;
+
+    GLenum res <span style="color:#f92672">=</span> glewInit();
+    <span style="color:#66d9ef">if</span>(res <span style="color:#f92672">!=</span> GLEW_OK)
+    {
+        std<span style="color:#f92672">::</span>cout <span style="color:#f92672">&lt;&lt;</span> <span style="color:#e6db74">&#34;Failed to initialize GLEW&#34;</span> <span style="color:#f92672">&lt;&lt;</span>std<span style="color:#f92672">::</span>endl;
+        std<span style="color:#f92672">::</span>cout <span style="color:#f92672">&lt;&lt;</span> glewGetErrorString(res) <span style="color:#f92672">&lt;&lt;</span>std<span style="color:#f92672">::</span>endl;
+        <span style="color:#66d9ef">return</span> <span style="color:#f92672">-</span><span style="color:#ae81ff">1</span>;
+    }
+
+    
+    init();
+
+    <span style="color:#66d9ef">while</span>(<span style="color:#f92672">!</span>glfwWindowShouldClose(window))
+    {
+        display();
+        glfwSwapBuffers(window);
+        glfwPollEvents();
+    }
+
+    glfwDestroyWindow(window);
+
+    glfwTerminate();
+
+    <span style="color:#66d9ef">return</span> <span style="color:#ae81ff">0</span>;
+}
+</code></pre></div><h2 id="参考文献">参考文献</h2>
+<ol>
+<li>OpenGL 编程指南中关于uniform block 绑定错误解释 <a href="https://zhuanlan.zhihu.com/p/124115917">https://zhuanlan.zhihu.com/p/124115917</a></li>
+<li>uniform block(3) <a href="https://zhuanlan.zhihu.com/p/79758640">https://zhuanlan.zhihu.com/p/79758640</a></li>
+<li>LearnOpenGL <a href="https://learnopengl-cn.github.io/04%20Advanced%20OpenGL/08%20Advanced%20GLSL/#uniform">https://learnopengl-cn.github.io/04%20Advanced%20OpenGL/08%20Advanced%20GLSL/#uniform</a></li>
+<li>Khronos OpenGL文档 <a href="https://www.khronos.org/opengl/wiki/GLAPI/glUniformBlockBinding">https://www.khronos.org/opengl/wiki/GLAPI/glUniformBlockBinding</a></li>
+</ol>
+
+    </div>
+    <div class="post-footer">
+      
+    </div>
+  </article>
+
+    </main>
+  </body>
+</html>

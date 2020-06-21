@@ -6,10 +6,21 @@
     <description>Recent content on Lost in coding</description>
     <generator>Hugo -- gohugo.io</generator>
     <language>en-us</language>
-    <lastBuildDate>Thu, 18 Jun 2020 12:46:54 +0800</lastBuildDate>
+    <lastBuildDate>Fri, 19 Jun 2020 23:36:42 +0800</lastBuildDate>
     
 	<atom:link href="https://zzakafool.github.io/index.xml" rel="self" type="application/rss+xml" />
     
+    
+    <item>
+      <title>《OpenGL编程指南》中关于Uniform_Block的部分错误</title>
+      <link>https://zzakafool.github.io/opengl/opengl%E7%BC%96%E7%A8%8B%E6%8C%87%E5%8D%97%E4%B8%AD%E5%85%B3%E4%BA%8Euniform_block%E7%9A%84%E9%83%A8%E5%88%86%E9%94%99%E8%AF%AF/</link>
+      <pubDate>Fri, 19 Jun 2020 23:36:42 +0800</pubDate>
+      
+      <guid>https://zzakafool.github.io/opengl/opengl%E7%BC%96%E7%A8%8B%E6%8C%87%E5%8D%97%E4%B8%AD%E5%85%B3%E4%BA%8Euniform_block%E7%9A%84%E9%83%A8%E5%88%86%E9%94%99%E8%AF%AF/</guid>
+      <description>碎碎念 在《OpenGL编程指南(第九版)》第2章的2.4节(数据块接口)中，作者介绍了Uniform Block的概念以及部分API，说实话，第一遍看的时候确实没看懂多少内容，Uniform Block咋用也不知道。不过还好早就有了心理准备，本来在买书的时候就知道红宝书是被大家称为字典书的。所幸看完2.4节，作者提供了一个例程，作者通过一个例子，介绍了Uniform Block的大致使用流程，这段代码我抄完后测试能够正常运行，之后我尝试对代码进行修改，打算再加入一个Unifrom Block，通过一个Buffer Object进行传值，然后&amp;hellip;&amp;hellip;然后就挖了一手好坑，改了一下午BUG。最后我发现对于Buffer Object还是理解有问题， 而且《OpenGL编程指南》中关于Uniform Block的API部分的理解是有问题的。
+问题分析 下面记录下我开始进行尝试的代码。
+#include &amp;lt;cstdio&amp;gt;#include &amp;lt;cstdlib&amp;gt;#include &amp;lt;cstring&amp;gt;#include &amp;lt;iostream&amp;gt;#include &amp;lt;GL/glew.h&amp;gt;#include &amp;#34;LoadShaders.h&amp;#34;#include &amp;lt;GLFW/glfw3.h&amp;gt;using namespace std; enum VAO_IDs{Triangles, NumVAOs}; enum Buffer_IDs{ArrayBuffer, NumBuffers}; enum Attrb_IDs{vPos = 0}; GLuint VAOs[NumVAOs]; GLuint Buffers[NumBuffers]; const GLuint NumVertices = 3; size_t TypeSize(GLenum type) { size_t size; #define CASE(Enum, Count, Type) \ case Enum : size = Count * sizeof(Type); break  switch(type){ CASE(GL_FLOAT, 1, GLfloat); CASE(GL_FLOAT_VEC2, 2, GLfloat); CASE(GL_FLOAT_VEC3, 3, GLfloat); CASE(GL_FLOAT_VEC4, 4, GLfloat); CASE(GL_INT, 1, GLint); CASE(GL_INT_VEC2, 2, GLint); CASE(GL_INT_VEC3, 3, GLint); CASE(GL_INT_VEC4, 4, GLint); CASE(GL_UNSIGNED_INT, 1, GLuint); CASE(GL_UNSIGNED_INT_VEC2, 2, GLuint); CASE(GL_UNSIGNED_INT_VEC3, 3, GLuint); CASE(GL_UNSIGNED_INT_VEC4, 4, GLuint); CASE(GL_BOOL, 1, GLboolean); CASE(GL_BOOL_VEC2, 2, GLboolean); CASE(GL_BOOL_VEC3, 3, GLboolean); CASE(GL_BOOL_VEC4, 4, GLboolean); CASE(GL_FLOAT_MAT2, 4, GLfloat); CASE(GL_FLOAT_MAT2x3, 6, GLfloat); CASE(GL_FLOAT_MAT2x4, 8, GLfloat); CASE(GL_FLOAT_MAT3, 9, GLfloat); CASE(GL_FLOAT_MAT3x2, 6, GLfloat); CASE(GL_FLOAT_MAT3x4, 12, GLfloat); CASE(GL_FLOAT_MAT4, 16, GLfloat); CASE(GL_FLOAT_MAT4x2, 8, GLfloat); CASE(GL_FLOAT_MAT4x3, 12, GLfloat); #undef CASE  default: fprintf(stderr, &amp;#34;unknow type: 0x%x\n&amp;#34;, type); exit(EXIT_FAILURE); break; } return size; } void init(void) { GLuint program; glClearColor(1, 0, 0, 1); ShaderInfo shaders[] = { {GL_VERTEX_SHADER, &amp;#34;.</description>
+    </item>
     
     <item>
       <title>从零开始的OpenGL学习笔记(一)</title>
